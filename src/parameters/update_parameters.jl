@@ -1,7 +1,7 @@
 function PSI.update_parameter_values!(
     model::PSI.OperationModel,
     key::PSI.ParameterKey{T, U},
-    input::PSI.DatasetContainer{PSI.DataFrameDataset},
+    input::PSI.DatasetContainer{PSI.InMemoryDataset},
 ) where {T <: PSI.ObjectiveFunctionParameter, U <: PSY.ReserveDemandCurve}
     # Enable again for detailed debugging
     # TimerOutputs.@timeit RUN_SIMULATION_TIMER "$T $U Parameter Update" begin
@@ -12,6 +12,7 @@ function PSI.update_parameter_values!(
     parameter_attributes = PSI.get_parameter_attributes(optimization_container, key)
 
     service = PSY.get_component(U, PSI.get_system(model), key.meta)
+    
     PSI._update_parameter_values!(param_array, parameter_attributes, service, model, input)
     IS.@record :execution PSI.ParameterUpdateEvent(
         T,
@@ -28,9 +29,9 @@ end
 function PSI._update_parameter_values!(
     param_array,
     attributes::PSI.CostFunctionAttributes,
-    service::V,
+    service::Type{V},
     model::PSI.DecisionModel,
-    ::PSI.DatasetContainer{PSI.DataFrameDataset},
+    ::PSI.DatasetContainer{PSI.InMemoryDataset},
 ) where {V <: PSY.ReserveDemandCurve}
     @show "PSI._update_parameter_values!"
     initial_forecast_time = PSI.get_current_time(model) # Function not well defined for DecisionModels

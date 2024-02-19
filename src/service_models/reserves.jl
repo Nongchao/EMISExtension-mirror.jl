@@ -307,30 +307,45 @@ function PSI.add_constraints!(
         [service_name];
         meta=service_name,
     )
-    parameter_container = PSI.get_parameter(container, PSI.RequirementTimeSeriesParameter(), SR, service_name)
-    param = PSI.get_parameter_array(parameter_container)
 
-    requirement = PSY.get_requirement(service)
     reserve_variable =
         PSI.get_variable(container, PSI.ActivePowerReserveVariable(), SR, service_name)
     use_slacks = PSI.get_use_slacks(model)
 
-    use_slacks && (slack_vars = PSI.reserve_slacks(container, service))
+    ts_vector = PSI.get_time_series(container, service, "requirement")
 
-    requirement_variable = PSI.get_variable(container, PSI.ServiceRequirementVariable(), SR, service_name)
+    use_slacks && (slack_vars = PSI.reserve_slacks!(container, service))
+    requirement = PSY.get_requirement(service)
     jump_model = PSI.get_jump_model(container)
+    if PSI.built_for_recurrent_solves(container)
+        param_container =
+            PSI.get_parameter(container, PSI.RequirementTimeSeriesParameter(), SR, service_name)
+        param = PSI.get_parameter_column_refs(param_container, service_name)
 
-    if use_slacks
-        resource_expression = sum(sum(reserve_variable[:, t]) + slack_vars[t] for t in time_steps)
+        if use_slacks
+            resource_expression = sum(sum(reserve_variable[:, t]) + slack_vars[t] for t in time_steps)
+        else
+            resource_expression = sum(sum(reserve_variable[:, t]) for t in time_steps)
+        end
+  
+        constraint[service_name] = JuMP.@constraint(
+            jump_model,
+            resource_expression >= sum(param[t] * requirement for t in time_steps)
+        )
+
     else
-        resource_expression = sum(sum(reserve_variable[:, t]) for t in time_steps)
-    end
 
-    constraint[service_name] = JuMP.@constraint(
-        jump_model,
-        resource_expression >= sum(param[service_name, t] * requirement for t in time_steps)
-        # double check with Sourabh: line 210 of reserves.jl in PSI
-    )
+        if use_slacks
+            resource_expression = sum(sum(reserve_variable[:, t]) + slack_vars[t] for t in time_steps)
+        else
+            resource_expression = sum(sum(reserve_variable[:, t]) for t in time_steps)
+        end
+
+        constraint[service_name] = JuMP.@constraint(
+            jump_model,
+            resource_expression >= sum( ts_vector[t] * requirement for t in time_steps)
+        )
+    end
 
     return
 end

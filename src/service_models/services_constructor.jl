@@ -9,7 +9,7 @@ function PSI.construct_service!(
     name = PSI.get_service_name(model)
     service = PSY.get_component(SR, sys, name)
     contributing_devices = PSI.get_contributing_devices(model)
-    PSI.add_variables!(container, PSI.ServiceRequirementVariable, service, QuadraticCostRampReserve())
+    PSI.add_variable!(container, PSI.ServiceRequirementVariable(), [service], QuadraticCostRampReserve())
     PSI.add_variables!(
         container,
         PSI.ActivePowerReserveVariable,
@@ -111,7 +111,7 @@ function PSI.construct_service!(
     service = PSY.get_component(SR, sys, name)
     PSI.add_parameters!(container, PSI.RequirementTimeSeriesParameter, service, model)
     contributing_devices = PSI.get_contributing_devices(model)
-    PSI.add_variables!(container, PSI.ServiceRequirementVariable, service, CleanEnergyReserve())
+    PSI.add_variables!(container, PSI.ServiceRequirementVariable, [service], CleanEnergyReserve())
     PSI.add_variables!(
         container,
         PSI.ActivePowerReserveVariable,
